@@ -106,6 +106,12 @@ class Arguments:
             help="Whether tp use streaming mode or not",
             default=True
         )
+        self.parser.add_argument(
+            "--model_name_pr_path",
+            type=str,
+            help="Specify model name to load Sbert Model",
+            default=""
+        )
 
     def parse(self):
         """Get arguments

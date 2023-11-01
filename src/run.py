@@ -6,19 +6,22 @@ from configs.arguments import Arguments
 from model import retriever_model
 from database import make_database
 from data import make_data
+from database.make_database import create_milvus_connection
+from pymilvus import utility, Collection
+from sentence_transformers import SentenceTransformer
 
 import dotenv
 
 dotenv.load_dotenv()
 
-PGDBNAME=os.getenv("PGDBNAME", "wiki_pgvector")
-PGHOST=os.getenv("PGHOST", "localhost")
-PGPORT=os.getenv("PGPORT", "5432")
-PGUSER=os.getenv("PGUSER", "wiki_ad")
-PGPWD=os.getenv("PGPWD", "55235")
+DBNAME=os.getenv("DBNAME", "wiki_33m_milvus")
+HOST=os.getenv("HOST", "localhost")
+PORT=os.getenv("PORT", "19530")
+USER=os.getenv("USER", "root")
+PWD=os.getenv("PWD", "Milvus")
 TB_WIKI=os.getenv("TB_WIKI", "wiki_tb")
 TB_CLIENT=os.getenv("TB_CLIENT", "client_tb")
-BATCH=int(os.getenv("BATCH", 16))
+BATCH=int(os.getenv("BATCH", 200))
 
 logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,50 +29,49 @@ logger = logging.getLogger(__name__)
 def main():
     arguments = Arguments()
     args = arguments.parse()
-    row = 17553713 if args.dataset_version == "wiki40b_en_100_0" else 33849898
+    # row = 17553713 if args.dataset_version == "wiki40b_en_100_0" else 33849898
+    row = 1000 if args.dataset_version == "wiki40b_en_100_0" else 1000
+    # connect milvus server
+    create_milvus_connection(host=HOST, port=PORT)
+    # start to create
     if not args.just_create_index:
-        if args.init_db and not args.init_tb:
-            make_database.create_postgres_db()
-            make_database.create_wiki_table()
-        elif args.init_tb and not args.init_db:
-            make_database.create_wiki_table()
-        elif not args.init_tb and not args.init_db:
-            logger.warning("Make sure your database and table exist")
-        else:
-            ValueError("Database and table are created at the same time, or just a table is created")
+        collection = None
+        if args.init_tb:
+            if utility.has_collection(TB_WIKI):
+                print("Drop collection")
+                utility.drop_collection(TB_WIKI)
+            print("Create collection")
+            collection = make_database.create_wiki_table()
+        elif not utility.has_collection(TB_WIKI): 
+            raise ValueError("Not having table wiki, please initialize first with `--init_tb` arguements")
+        else: 
+            collection = Collection(TB_WIKI)  
 
-        encoder_model, model_tokenizer = retriever_model.load_dpr_context_encoder(
-                model_name_or_path="vblagoje/dpr-ctx_encoder-single-lfqa-wiki"
-                )
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # model = SentenceTransformer('all-MiniLM-L6-v2')
+        model = SentenceTransformer(args.model_name_pr_path)
+        # specify target_devices for multi_gpus/gpu/cpu
+        target_devices = ['cuda:{}'.format(i) for i in range(torch.cuda.device_count())]
         
-        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Start downloading dataset")
-        encoder_model.to(device)
-        encoder_model.eval()
         wiki_snippets = make_data.download_dataset(
-                dataset_name=args.dataset_name,
-                dataset_version = args.dataset_version,
-                streaming=args.streaming
-                )
+            dataset_name=args.dataset_name,
+            dataset_version = args.dataset_version,
+            streaming=args.streaming
+        )
 
         print("Start inserting knowledges")
-        make_database.insert_knowledges(
-                context_encoder=encoder_model,
-                context_tokenizer=model_tokenizer,
-                snippets=wiki_snippets,
-                device=device, 
-                n_gpus=args.n_gpus, 
-                gpu_index=args.gpu_index
-                )
-        make_database.create_index(
-                tb_name=TB_WIKI,
-                num_data=row)
+        make_database.using_sbert_encode_multi_gpu(
+            collection=collection,
+            model=model,
+            snippets=wiki_snippets,
+            target_devices=target_devices, 
+            batch_insert=BATCH,
+            limit_samples=row
+        )
+        make_database.build_indexs(collection=collection)
     else:
         logger.warning("Only index initialization is perfomed, make sure your table is filled up with data.")
-        make_database.create_index(
-                tb_name=TB_WIKI,
-                num_data=row)
+        make_database.build_indexs(collection=collection)
 
 if __name__=="__main__":
     main()

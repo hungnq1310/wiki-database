@@ -8,6 +8,8 @@ from transformers import (
         DPRContextEncoderTokenizer,
         DPRContextEncoder
         )
+from sentence_transformers import SentenceTransformer
+
 import torch
 
 def load_dpr_context_encoder(
@@ -55,7 +57,7 @@ def get_ctx_embd(
 
 
 def get_ctx_emb_sbert( 
-        model_name_pr_path: str,
+        model: SentenceTransformer,
         batch_contents : Union[str, List[str]],
         target_devices: List[str] = None
         ) -> torch.tensor:
@@ -67,9 +69,6 @@ def get_ctx_emb_sbert(
     if isinstance(batch_contents, str):
         batch_contents = [batch_contents]
 
-    from sentence_transformers import SentenceTransformer
-    # model = SentenceTransformer('all-MiniLM-L6-v2')
-    model = SentenceTransformer(model_name_pr_path)
     # Start the multi-process pool on all available CUDA devices
     pool = model.start_multi_process_pool(target_devices=target_devices)
 

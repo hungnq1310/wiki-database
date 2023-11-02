@@ -1,32 +1,54 @@
 # wiki-database
-## Setup
+## Setup Environment
 ```bash
 conda create -n wiki python==3.8 -y
 conda activate wiki
 pip install -r requirements.txt
 ```
+
+## Setup Milvus server
+### Requirement
+Milvus server run on Docker server, please see these following links first:
+1. https://docs.docker.com/engine/install/ 
+2. https://milvus.io/docs/prerequisite-docker.md
+
+### Install Milvus
+Download `milvus-standalone-docker-compose.yml` and save it as `docker-compose.yml` manually, or with the following command:
+```
+wget https://github.com/milvus-io/milvus/releases/download/v2.3.2/milvus-standalone-docker-compose.yml -O docker-compose.yml
+```
+
+### Start Milvus
+* In the same directory as the `docker-compose.yml` file, start up Milvus by running:
+```
+sudo docker-compose up -d
+```
+
+* Now check if same directory as the `docker-compose.yml` file has folder `volumes`, or run the following command:
+```
+sudo docker compose ps
+```
+
+* Connect to Milvus: 
+```
+docker port milvus-standalone 19530/tcp
+```
+
 ## .env
 - Please access `.env` file to modify database information in order to connect to the database
 ```bash
-PGDBNAME="postgre"
-PGHOST="localhost"
-PGPORT="postgre"
-PGUSER="postgre"
-PGPWD="postgre"
+DBNAME="wiki_33m_milvus"
+HOST="localhost"
+PORT="19530"
 TB_WIKI="wiki_tb"
 TB_CLIENT="client_tb"
-BATCH=16
+BATCH=200
 ```
 ## Implement
 ### Multi process (hotfix)
-- create 2 terminal windows 
-- At the first terminal, run:
+- If you using gpus, please specify `CUDA_VISIBLE_DEVICES`
 ```bash
-CUDA_VISIBLE_DEVICES=0 python src/run.py --n_gpus 2 --gpu_index 0
-```
-- At the second terminal, run:
-```bash
-CUDA_VISIBLE_DEVICES=1 python src/run.py --n_gpus 2 --gpu_index 1
+CUDA_VISIBLE_DEVICES=0,1 python src/run.py
 ```
 
 ### Create Wikipedia database
@@ -69,4 +91,3 @@ python src/run_client.py --client_data_path </path/to/client/knowledge/csv>
 python src/run.py --just_create_index \
                   --client_data_path </path/to/client/knowledge/csv>
 ```
-*Note: When creating index, we try creating index with `4*sqrt(number_of_row)` first. If there were any error, It would automatically change creating index method with default cluster equals to 100*

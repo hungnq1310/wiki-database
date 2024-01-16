@@ -39,7 +39,7 @@ def main():
 
     # upper case metric_type and index_type    
     index_type = args.index_type.upper()
-    metrics_type = args.metrics_type.lower()
+    metrics_type = args.metrics_type.upper()
 
     # connect milvus server
     create_milvus_connection(
@@ -91,6 +91,7 @@ def main():
             snippets=wiki_snippets,
             target_devices=target_devices, 
             batch_insert=args.batch_insert or BATCH,
+            batch_embed=args.batch_embed or 32,
             limit_samples=max_rows
         )
         print("building index for tables")
@@ -100,20 +101,24 @@ def main():
             index_type=index_type,
             metric_type=metrics_type,
         )
+        logger.info("\nCreated index:\n{}".format(collection.index().params))
     else:
         # logger.warning("Only index initialization is perfomed, make sure your table is filled up with data.")
         print("Only index initialization is perfomed, make sure your table is filled up with data.")
         collection = Collection(TB_WIKI or args.tbname)  
         collection.release()
+        print("Drop index...")
         collection.drop_index(
             filed_name="embedding",
         )
+        print("Build index...")
         make_database.build_indexs(
             collection=collection,
             filed_name="embedding",
             index_type=index_type,
             metric_type=metrics_type,
         )
+        print("\nCreated index:\n{}".format(collection.index().params))
 
 if __name__=="__main__":
     main()

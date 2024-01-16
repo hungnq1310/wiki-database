@@ -42,7 +42,10 @@ def main():
     metrics_type = args.metrics_type.lower()
 
     # connect milvus server
-    create_milvus_connection(host=HOST, port=PORT)
+    create_milvus_connection(
+        host=args.host or HOST,
+        port=args.port or PORT,
+    )
 
     # start to create
     if not args.just_create_index:
@@ -61,18 +64,18 @@ def main():
 
         # check if create collection
         if args.init_tb:
-            if utility.has_collection(TB_WIKI):
+            if utility.has_collection(args.tbname or TB_WIKI):
                 print("Drop collection")
-                utility.drop_collection(TB_WIKI)
+                utility.drop_collection(args.tbname or TB_WIKI)
             print("Create collection")
             # create collection with dim of model's embedding
             collection = make_database.create_wiki_table(
                 model_dim=model_dim
             )
-        elif not utility.has_collection(TB_WIKI): 
+        elif not utility.has_collection(args.tbname or TB_WIKI): 
             raise ValueError("Not having table wiki, please initialize first with `--init_tb` arguements")
         else: 
-            collection = Collection(TB_WIKI)  
+            collection = Collection(args.tbname or TB_WIKI)  
         
         print("Start downloading dataset")
         wiki_snippets = make_data.download_dataset(
@@ -87,7 +90,7 @@ def main():
             model=model,
             snippets=wiki_snippets,
             target_devices=target_devices, 
-            batch_insert=args.batch_insert,
+            batch_insert=args.batch_insert or BATCH,
             limit_samples=max_rows
         )
         print("building index for tables")
@@ -100,7 +103,7 @@ def main():
     else:
         # logger.warning("Only index initialization is perfomed, make sure your table is filled up with data.")
         print("Only index initialization is perfomed, make sure your table is filled up with data.")
-        collection = Collection(TB_WIKI)  
+        collection = Collection(TB_WIKI or args.tbname)  
         collection.release()
         collection.drop_index(
             filed_name="embedding",

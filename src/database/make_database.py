@@ -40,9 +40,9 @@ def create_milvus_connection(host, port) -> None:
     try:
         # Create a Milvus connection
         logger.info(f"\nCreate connection...")
+        print(f"\nCreate connection...")
         connections.connect(host=host, port=port)
-        logger.info(f"\nList connections:")
-        logger.info(connections.list_connections())
+        logger.info(f"\nList connections:", connections.list_connections())
     except Exception as e:
         logger.error(f"""Error while connecting to Milvus Server: {e}, 
                      please check that Milvus is runing in Docker Desktop""")
@@ -107,13 +107,13 @@ def create_wiki_table(model_dim: int) -> Collection:
 
 
 def _insert_entites(
-        collection: Collection,
-        batch_ids: List[int],
-        batch_names: List[str],
-        batch_titles: List[str],
-        batch_contents: List[str],
-        batch_embs: List[List[float]],
-        ):
+    collection: Collection,
+    batch_ids: List[int],
+    batch_names: List[str],
+    batch_titles: List[str],
+    batch_contents: List[str],
+    batch_embs: List[List[float]],
+):
     """
     Example:
         data_samples = [[feature_1], [feature_2], [feature_3]]
@@ -133,13 +133,13 @@ def _insert_entites(
 
 
 def using_sbert_encode_multi_gpu(
-        collection: Collection,
-        model: SentenceTransformer,
-        snippets: datasets.iterable_dataset.IterableDataset,
-        target_devices: List[str],
-        batch_insert: int,
-        limit_samples: int
-        ) -> None:
+    collection: Collection,
+    model: SentenceTransformer,
+    snippets: datasets.iterable_dataset.IterableDataset,
+    target_devices: List[str],
+    batch_insert: int,
+    limit_samples: int
+) -> None:
     """Insert wiki snippets or knowledge to wiki table
 
     Args:
@@ -218,12 +218,12 @@ def using_sbert_encode_multi_gpu(
     
 
 def insert_client_knowledges(
-        saved_path: str,
-        collection: Collection, 
-        model: SentenceTransformer,
-        target_devices: List[str],
-        batch: int
-        ) -> None:
+    saved_path: str,
+    collection: Collection, 
+    model: SentenceTransformer,
+    target_devices: List[str],
+    batch: int
+) -> None:
     """Insert client's knowledge to table
 
     Args:
@@ -309,8 +309,12 @@ def insert_client_knowledges(
         logger.error(f"Failed inserting knowledge into {TB_CLIENT}: {e}")
 
 
-def build_indexs(collection: Collection, 
-                 filed_name: str = "embedding"):
+def build_indexs(
+    collection: Collection, 
+    filed_name: str = "embedding",
+    index_type: str = _INDEX_TYPE,
+    metric_type: str = _METRIC_TYPE,
+):
     """Building index for column search  
     
     Please check milvus's documents to customize parameters: https://milvus.io/docs/build_index.md
@@ -319,18 +323,21 @@ def build_indexs(collection: Collection,
         filed_name: A column using to build
     """
     index_param = {
-        "index_type": _INDEX_TYPE,
+        "index_type": index_type,
         "params": {"nlist": _NLIST},
-        "metric_type": _METRIC_TYPE}
+        "metric_type": metric_type
+    }
     collection.create_index(filed_name, index_param)
     logger.info("\nCreated index:\n{}".format(collection.index().params))
 
 def search(
-        collection: Collection, 
-        data_embed: Union[List[float], List[List[float]]],
-        column_search: str = "embedding",  
-        limit_docs: int = 3,
-        ):
+    collection: Collection, 
+    data_embed: Union[List[float], List[List[float]]],
+    metric_search: str = _METRIC_TYPE,
+    column_search: str = "embedding",  
+    limit_docs: int = 3,
+    offset: int = 10,
+):
     """Insert client's knowledge to table
 
     To customize search_params, please check documents of milvus: https://milvus.io/docs/search.md
@@ -342,7 +349,8 @@ def search(
     """
     # Feel free to custom metric type and n_probe
     search_params = {
-        "metric_type": _METRIC_TYPE, 
+        "metric_type": metric_search, 
+        "offset": offset,
         "ignore_growing": False, 
         "params": {"nprobe": _NPROBE}
     }

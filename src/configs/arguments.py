@@ -25,7 +25,7 @@ class Arguments:
             "--n_gpus",
             type=int,
             help="number of availabel gpus",
-            default=2
+            default=1
         )
         self.parser.add_argument(
             "--gpu_index",
@@ -107,11 +107,45 @@ class Arguments:
             default=True
         )
         self.parser.add_argument(
-            "--model_name_pr_path",
+            "--model_name_or_path",
             type=str,
             help="Specify model name to load Sbert Model",
             default=""
         )
+        self.parser.add_argument(
+            "--max_rows",
+            type=int,
+            help="maximun number of rows inserting to collection",
+            default=None
+        )
+        self.parser.add_argument(
+            "--metrics_type",
+            type=str,
+            help="type of metric when building index",
+            choices=["l2", "ip", "cosine", "hamming", "jaccard"],
+            default="l2"
+        )
+        self.parser.add_argument(
+            "--index_type",
+            type=str,
+            help="type of index when building field's index",
+            choices=['flat', 'ivf_flat', 'hnsw'],
+            default="ivf_flat"
+        )
+        self.parser.add_argument(
+            "--batch_embed",
+            type=int,
+            help="number of batch examples when model encode",
+            default=32
+        )
+        self.parser.add_argument(
+            "--batch_insert",
+            type=int,
+            help="number limit of batch examples to insert to milvus database",
+            default=10000
+        )
+        
+
 
     def parse(self):
         """Get arguments

@@ -3,7 +3,6 @@ import logging
 import torch
 
 from configs.arguments import Arguments
-from model import retriever_model
 from database import make_database
 from data import make_data
 from database.make_database import create_milvus_connection
@@ -27,8 +26,21 @@ logger = logging.getLogger(__name__)
 def main():
     arguments = Arguments()
     args = arguments.parse()
+
+    # VALIDATE
     # row = 17553713 if args.dataset_version == "wiki40b_en_100_0" else 33849898
-    row = 1000000 if args.dataset_version == "wiki40b_en_100_0" else 1000000
+    max_rows = None
+    if args.max_rows:
+        max_rows = args.max_rows
+    elif args.dataset_version == "wiki40b_en_100_0":
+        max_rows = 17553713
+    else: 
+        max_rows = 33849898
+
+    # upper case metric_type and index_type    
+    index_type = args.index_type.upper()
+    metrics_type = args.metrics_type.lower()
+
     # connect milvus server
     create_milvus_connection(host=HOST, port=PORT)
 
@@ -75,11 +87,16 @@ def main():
             model=model,
             snippets=wiki_snippets,
             target_devices=target_devices, 
-            batch_insert=BATCH,
-            limit_samples=row
+            batch_insert=args.batch_insert,
+            limit_samples=max_rows
         )
         print("building index for tables")
-        make_database.build_indexs(collection=collection)
+        make_database.build_indexs(
+            collection=collection,
+            filed_name="embedding",
+            index_type=index_type,
+            metric_type=metrics_type,
+        )
     else:
         # logger.warning("Only index initialization is perfomed, make sure your table is filled up with data.")
         print("Only index initialization is perfomed, make sure your table is filled up with data.")
@@ -90,7 +107,9 @@ def main():
         )
         make_database.build_indexs(
             collection=collection,
-            filed_name="embedding"
+            filed_name="embedding",
+            index_type=index_type,
+            metric_type=metrics_type,
         )
 
 if __name__=="__main__":

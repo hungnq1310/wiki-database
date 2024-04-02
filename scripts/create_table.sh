@@ -1,0 +1,12 @@
+CUDA_VISIBLE_DEVICES=0 python src/run.py \
+--tbname wiki_tb \
+--init_tb \
+--dataset_version wiki40b_en_100_0 \
+--model_name_or_path sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 \
+--gpu_index 0 \
+--index_type ivf_flat \
+--metrics_type cosine \
+--max_rows 1000000 \
+--batch_embed 64 \
+--batch_insert 20000 \
+--n_gpus 1 

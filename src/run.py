@@ -1,6 +1,7 @@
 import os
 import logging
 import torch
+import time
 
 from configs.arguments import Arguments
 from database import make_database
@@ -51,6 +52,8 @@ def main():
     if not args.just_create_index:
         # Init collection
         collection = None
+        
+        startTime_whole = int(round(time.time() * 1000))
 
         # Initialize model
         # model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -85,6 +88,7 @@ def main():
         )
 
         print("Start inserting knowledges")
+        startTime_insert = int(round(time.time() * 1000))
         make_database.using_sbert_encode_multi_gpu(
             collection=collection,
             model=model,
@@ -94,15 +98,26 @@ def main():
             batch_embed=args.batch_embed or 32,
             limit_samples=max_rows
         )
+        endTime_insert = int(round(time.time() * 1000))
+        print(f"Time for insert data: {endTime_insert - startTime_insert} ms")
+
         print("building index for tables")
+        startTime_buildindex = int(round(time.time() * 1000))
         make_database.build_indexs(
             collection=collection,
             filed_name="embedding",
             index_type=index_type,
             metric_type=metrics_type,
         )
-        logger.info("\nCreated index:\n{}".format(collection.index().params))
+        endTime_buildindex = int(round(time.time() * 1000))
+        print(f"Time for building index: {endTime_buildindex - startTime_buildindex} ms")
+
+        endTime_whole = int(round(time.time() * 1000))
+        print(f"Time for whole pipeline: {endTime_whole - startTime_whole} ms")
+        print("\nCreated index:\n{}".format(collection.index().params))
     else:
+        startTime_whole = int(round(time.time() * 1000))
+
         # logger.warning("Only index initialization is perfomed, make sure your table is filled up with data.")
         print("Only index initialization is perfomed, make sure your table is filled up with data.")
         collection = Collection(TB_WIKI or args.tbname)  
@@ -118,6 +133,8 @@ def main():
             index_type=index_type,
             metric_type=metrics_type,
         )
+        endTime_whole = int(round(time.time() * 1000))
+        print(f"Time for whole building index: {endTime_whole - startTime_whole} ms")
         print("\nCreated index:\n{}".format(collection.index().params))
 
 if __name__=="__main__":

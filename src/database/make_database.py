@@ -138,6 +138,7 @@ def using_sbert_encode_multi_gpu(
     snippets: datasets.iterable_dataset.IterableDataset,
     target_devices: List[str],
     batch_insert: int,
+    batch_embed: int,
     limit_samples: int
 ) -> None:
     """Insert wiki snippets or knowledge to wiki table
@@ -173,10 +174,15 @@ def using_sbert_encode_multi_gpu(
                 len(batch_names): {len(batch_names)}, 
                 len(batch_contents): {len(batch_contents)}
                 """
-            batch_embeds = get_ctx_emb_sbert(
-                model=model,
-                batch_contents=batch_contents,
-                target_devices=target_devices
+            # batch_embeds = get_ctx_emb_sbert(
+            #     model=model,
+            #     batch_contents=batch_contents,
+            #     target_devices=target_devices
+            # )
+            batch_embeds = model.encode(
+                sentences=batch_contents,
+                device=target_devices[0] if len(target_devices) > 0 else "cpu",
+                batch_size=batch_embed,
             )
             _insert_entites(
                 collection=collection,
@@ -200,11 +206,17 @@ def using_sbert_encode_multi_gpu(
             len(batch_names): {len(batch_names)}, 
             len(batch_contents): {len(batch_contents)}
             """
-        batch_embeds = get_ctx_emb_sbert(
-            model=model,
-            batch_contents=batch_contents,
-            target_devices=target_devices
+        # batch_embeds = get_ctx_emb_sbert(
+        #     model=model,
+        #     batch_contents=batch_contents,
+        #     target_devices=target_devices
+        # )
+        batch_embeds = model.encode(
+            sentences=batch_contents,
+            device=target_devices[0] if len(target_devices) > 0 else "cpu",
+            batch_size=batch_embed,
         )
+
         _insert_entites(
             collection=collection,
             batch_ids=batch_ids,
@@ -222,7 +234,8 @@ def insert_client_knowledges(
     collection: Collection, 
     model: SentenceTransformer,
     target_devices: List[str],
-    batch: int
+    batch_insert: int,
+    batch_embed: int,
 ) -> None:
     """Insert client's knowledge to table
 
@@ -254,16 +267,21 @@ def insert_client_knowledges(
             batch_domains.append(load_data.get("domains"))
             batch_contents.append(load_data.get("content"))
             # insert batch
-            if len(batch_contents) == batch:
+            if len(batch_contents) == batch_insert:
                 assert len(batch_titles) == len(batch_domains) == len(batch_contents), \
                         f"""len(batch_titles): {len(batch_titles)}, 
                         len(batch_domains): {len(batch_domains)},  
                         len(batch_contents): {len(batch_contents)}"""
                 # get embddings from model sbert
-                batch_embeds = get_ctx_emb_sbert(
-                    model=model,
-                    batch_contents=batch_contents,
-                    target_devices=target_devices,
+                # batch_embeds = get_ctx_emb_sbert(
+                #     model=model,
+                #     batch_contents=batch_contents,
+                #     target_devices=target_devices,
+                # )
+                batch_embeds = model.encode(
+                    sentences=batch_contents,
+                    device=target_devices[0] if len(target_devices) > 0 else "cpu",
+                    batch_size=batch_embed,
                 )
                 # insert entities, batch_names <- batch_domains
                 _insert_entites(
@@ -288,11 +306,19 @@ def insert_client_knowledges(
                 len(batch_contents): {len(batch_contents)}"""
 
             # get embddings from model sbert
-            batch_embeds = get_ctx_emb_sbert(
-                model=model,
-                batch_contents=batch_contents,
-                target_devices=target_devices,
+            # batch_embeds = get_ctx_emb_sbert(
+            #     model=model,
+            #     batch_contents=batch_contents,
+            #     target_devices=target_devices,
+            # )
+
+            #TODO: verify if using normalize or not
+            batch_embeds = model.encode(
+                sentences=batch_contents,
+                device=target_devices[0] if len(target_devices) > 0 else "cpu",
+                batch_size=batch_embed,
             )
+
             # insert entities, batch_names <- batch_domains
             _insert_entites(
                 collection=collection,
